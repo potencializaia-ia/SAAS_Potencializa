@@ -5,8 +5,9 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useRouter } from "next/navigation";
-import { Building2, User, FileText, ChevronRight, ChevronLeft, Loader2, Zap } from "lucide-react";
+import { Building2, User, FileText, ChevronRight, ChevronLeft, Zap } from "lucide-react";
 import type { FormData, AnalysisResult } from "@/types";
+import LoadingAnalysis from "@/components/LoadingAnalysis";
 
 // ─── Validação Zod ────────────────────────────────────────────────────────────
 
@@ -119,6 +120,9 @@ export default function DiagnosticForm() {
   };
 
   const progress = ((step - 1) / (STEPS.length - 1)) * 100;
+
+  // Mostra tela de loading full-screen durante análise da IA
+  if (loading) return <LoadingAnalysis />;
 
   return (
     <div className="w-full max-w-2xl mx-auto">
@@ -339,17 +343,8 @@ export default function DiagnosticForm() {
               disabled={loading}
               className="flex items-center gap-2 px-8 py-3 rounded-xl bg-[#ff851b] hover:bg-[#e0700d] text-white font-semibold transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed disabled:scale-100"
             >
-              {loading ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  Analisando com IA...
-                </>
-              ) : (
-                <>
-                  <Zap className="w-4 h-4" />
-                  Gerar Diagnóstico
-                </>
-              )}
+              <Zap className="w-4 h-4" />
+              Gerar Diagnóstico
             </button>
           )}
         </div>
