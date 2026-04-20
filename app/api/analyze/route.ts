@@ -16,39 +16,101 @@ const orcamentoLabel: Record<string, string> = {
   "indefinido": "ainda não definido",
 };
 
-// ─── Prompt para Claude ───────────────────────────────────────────────────────
+// ─── Validação pré-IA: detecta gibberish sem gastar créditos ─────────────────
+function detectarConteudoInvalido(data: FormData): string | null {
+  const textos = [
+    { campo: "descrição dos processos", valor: data.descricao },
+    { campo: "principal dor/desafio",   valor: data.dor },
+  ];
+
+  for (const { campo, valor } of textos) {
+    const palavras = valor.trim().split(/\s+/);
+
+    // Menos de 4 palavras reais
+    if (palavras.length < 4) {
+      return `O campo "${campo}" está muito curto para gerar um diagnóstico preciso. Descreva com mais detalhes.`;
+    }
+
+    // Média de comprimento de palavra > 12 (ex: "asdhasudhausdhausd")
+    const comprimentoMedio = valor.replace(/\s+/g, "").length / palavras.length;
+    if (comprimentoMedio > 12) {
+      return `O campo "${campo}" parece conter texto inválido. Use palavras reais para descrever sua empresa.`;
+    }
+
+    // Muitos caracteres repetidos seguidos (ex: "aaaaaaa", "ssssss")
+    if (/(.)\1{4,}/.test(valor)) {
+      return `O campo "${campo}" contém caracteres repetidos. Descreva com informações reais da sua empresa.`;
+    }
+
+    // Menos de 30% das palavras têm 3+ letras (palavras reais)
+    const palavrasReais = palavras.filter((p) => p.length >= 3);
+    if (palavrasReais.length / palavras.length < 0.5) {
+      return `O campo "${campo}" não contém informações suficientes. Seja mais detalhado sobre seus processos.`;
+    }
+  }
+
+  return null; // Tudo ok
+}
+
+// ─── Prompt principal ────────────────────────────────────────────────────────
 function buildPrompt(data: FormData): string {
-  return `Você é um especialista sênior em automação com IA para empresas brasileiras. Analise os dados abaixo e retorne um diagnóstico preciso e personalizado.
+  return `Você é um especialista sênior em automação com IA para empresas brasileiras da Potencializa.
+
+## SUA TAREFA
+
+Analise os dados reais desta empresa e gere um diagnóstico de automação PERSONALIZADO e ESPECÍFICO.
 
 ## DADOS DA EMPRESA
 
-- **Nome:** ${data.nome} (${data.empresa})
+- **Responsável:** ${data.nome}
+- **Empresa:** ${data.empresa}
 - **Setor:** ${data.setor}
 - **Tamanho:** ${data.tamanho} funcionários
-- **Descrição dos processos:** ${data.descricao}
-- **Principal dor/desafio:** ${data.dor}
-- **Orçamento disponível:** ${orcamentoLabel[data.orcamento] ?? data.orcamento}
+- **Orçamento:** ${orcamentoLabel[data.orcamento] ?? data.orcamento}
+- **Descrição dos processos:** "${data.descricao}"
+- **Principal dor/desafio:** "${data.dor}"
 
-## INSTRUÇÕES
+## VALIDAÇÃO OBRIGATÓRIA
 
-Identifique as **top 5 oportunidades de automação com IA** mais relevantes para esta empresa específica, ordenadas por impacto (maior impacto primeiro).
+Antes de gerar as automações, avalie se os dados acima são informativos e coerentes:
+- A descrição menciona processos reais de uma empresa? (ex: atendimento, vendas, contratos, relatórios, agendamentos...)
+- A dor/desafio descreve um problema real de negócio?
 
-Para cada automação, considere:
-- O contexto real do setor (${data.setor})
-- Os processos descritos acima
-- A principal dor mencionada
-- O custo médio de mão de obra no Brasil: R$ 50-150/hora (varia por setor e cargo)
+Se os dados forem vagos, incoerentes ou sem sentido, retorne SOMENTE este JSON:
+{
+  "erro": "dados_insuficientes",
+  "mensagem": "Explique em 1 frase o que está faltando para gerar o diagnóstico"
+}
 
-## FORMATO DE RESPOSTA (OBRIGATÓRIO)
+## SE OS DADOS FOREM VÁLIDOS
 
-Responda APENAS com um JSON válido neste formato exato, sem texto antes ou depois:
+Identifique as **top 5 oportunidades de automação** mais impactantes para esta empresa ESPECÍFICA.
+
+**REGRAS DE PERSONALIZAÇÃO (crítico):**
+- Cada automação deve mencionar detalhes reais da descrição fornecida
+- Não gere automações genéricas — use o contexto do setor (${data.setor}) e dos processos descritos
+- O resumoGeral deve citar o nome da empresa (${data.empresa}) e detalhes específicos
+- Os valores devem ser realistas para ${data.tamanho} funcionários no setor de ${data.setor}
+
+**Custo médio de mão de obra no Brasil por setor:**
+- Advocacia/Jurídico: R$ 80–150/hora
+- Saúde/Clínicas: R$ 60–120/hora
+- Contabilidade/Financeiro: R$ 70–130/hora
+- Tecnologia: R$ 80–160/hora
+- Varejo/E-commerce: R$ 30–60/hora
+- Educação: R$ 40–80/hora
+- Outros setores: R$ 40–100/hora
+
+## FORMATO DE RESPOSTA (quando dados são válidos)
+
+Responda APENAS com JSON válido neste formato exato:
 
 {
   "automacoes": [
     {
-      "titulo": "Nome curto e claro da automação (máx. 8 palavras)",
-      "descricao": "Descrição concreta de o que automatizar e como a IA faz isso (2-3 frases)",
-      "tipoAgente": "Tipo do agente IA (ex: Chatbot de atendimento, Processador de documentos, Classificador automático, Gerador de relatórios, Agente de triagem)",
+      "titulo": "Nome específico da automação (máx. 8 palavras, use contexto da empresa)",
+      "descricao": "Descreva EXATAMENTE o que será automatizado com base nos processos mencionados. Como a IA resolve a dor específica desta empresa. (2-3 frases concretas)",
+      "tipoAgente": "Tipo do agente IA (ex: Agente de triagem de contratos, Chatbot de agendamento, Processador de laudos, Classificador de leads)",
       "horasMes": 40,
       "economiaMes": 3000,
       "roi12meses": 36000,
@@ -60,20 +122,19 @@ Responda APENAS com um JSON válido neste formato exato, sem texto antes ou depo
   "totalHorasMes": 120,
   "totalEconomiaMes": 9000,
   "totalRoi12meses": 108000,
-  "resumoGeral": "Parágrafo de 2-3 frases resumindo o potencial de automação desta empresa específica, mencionando os principais ganhos e o impacto esperado."
+  "resumoGeral": "2-3 frases específicas sobre o potencial da ${data.empresa} no setor de ${data.setor}, mencionando as principais oportunidades identificadas nos processos descritos."
 }
 
 ## REGRAS CRÍTICAS
 
-1. Retorne APENAS o JSON, sem markdown, sem explicações
-2. Os valores numéricos devem ser realistas para o setor e tamanho da empresa
-3. horasMes = horas economizadas mensalmente (seja conservador: 10-80h por automação)
-4. economiaMes = horasMes × custo/hora médio do setor
-5. roi12meses = economiaMes × 12 (estimativa de economia bruta anual)
-6. complexidade deve ser exatamente: "Fácil", "Médio" ou "Complexo"
-7. produtosPotencializa deve conter valores do array: ["Treinamento IA", "Agente IA Customizado", "Consultoria em IA", "Treinamento + Agente"]
-8. Máximo de 5 automações, mínimo de 3
-9. Seja específico para o setor: uma automação de escritório de advocacia é diferente de uma clínica médica`;
+1. Retorne APENAS o JSON — sem markdown, sem texto antes ou depois
+2. horasMes: horas economizadas/mês por automação (10–80h, seja conservador)
+3. economiaMes: horasMes × custo/hora do setor
+4. roi12meses: economiaMes × 12
+5. complexidade: exatamente "Fácil", "Médio" ou "Complexo"
+6. produtosPotencializa: valores de ["Treinamento IA", "Agente IA Customizado", "Consultoria em IA", "Treinamento + Agente"]
+7. Máximo 5, mínimo 3 automações
+8. A primeira automação (#1) deve atacar diretamente a DOR principal descrita pelo usuário`;
 }
 
 // ─── Handler ──────────────────────────────────────────────────────────────────
@@ -81,7 +142,16 @@ export async function POST(req: NextRequest) {
   try {
     const data: FormData = await req.json();
 
-    // Chama Claude API
+    // 1. Validação pré-IA (sem custo de crédito)
+    const erroValidacao = detectarConteudoInvalido(data);
+    if (erroValidacao) {
+      return NextResponse.json(
+        { erro: "dados_insuficientes", mensagem: erroValidacao },
+        { status: 422 }
+      );
+    }
+
+    // 2. Chama Claude API
     const message = await client.messages.create({
       model:      "claude-sonnet-4-5",
       max_tokens: 2048,
@@ -93,18 +163,17 @@ export async function POST(req: NextRequest) {
       ],
     });
 
-    // Extrai o texto da resposta
+    // 3. Extrai o texto da resposta
     const rawText = message.content
       .filter((b) => b.type === "text")
       .map((b) => (b as { type: "text"; text: string }).text)
       .join("");
 
-    // Parse do JSON
-    let result: AnalysisResult;
+    // 4. Parse do JSON
+    let parsed: AnalysisResult & { erro?: string; mensagem?: string };
     try {
-      // Remove possíveis marcações de código caso Claude inclua
       const clean = rawText.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
-      result = JSON.parse(clean);
+      parsed = JSON.parse(clean);
     } catch {
       console.error("Falha ao parsear JSON do Claude:", rawText);
       return NextResponse.json(
@@ -113,10 +182,18 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Salva lead no Supabase (não bloqueia a resposta)
-    saveLeadToSupabase(data, result).catch(console.error);
+    // 5. Claude identificou dados inválidos
+    if (parsed.erro === "dados_insuficientes") {
+      return NextResponse.json(
+        { erro: "dados_insuficientes", mensagem: parsed.mensagem },
+        { status: 422 }
+      );
+    }
 
-    // Envia email de notificação (não bloqueia a resposta)
+    const result = parsed as AnalysisResult;
+
+    // 6. Salva lead e notifica (não bloqueia a resposta)
+    saveLeadToSupabase(data, result).catch(console.error);
     notifyNewLead(data, result).catch(console.error);
 
     return NextResponse.json(result);

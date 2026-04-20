@@ -103,8 +103,19 @@ export default function DiagnosticForm() {
         headers: { "Content-Type": "application/json" },
         body:    JSON.stringify(data),
       });
+
+      const json = await res.json();
+
+      // Dados insuficientes / inválidos — erro amigável sem travar
+      if (res.status === 422 && json.erro === "dados_insuficientes") {
+        setError(`⚠️ ${json.mensagem ?? "Preencha os campos com informações reais da sua empresa para gerar o diagnóstico."}`);
+        setLoading(false);
+        return;
+      }
+
       if (!res.ok) throw new Error("Erro ao processar análise");
-      const result: AnalysisResult = await res.json();
+
+      const result: AnalysisResult = json;
 
       // Salva no sessionStorage para a página de resultado ler
       sessionStorage.setItem("diagnostico_form",   JSON.stringify(data));
