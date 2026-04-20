@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { Calendar, FileText, TrendingUp, Clock, DollarSign, ArrowRight, Share2, CheckCircle } from "lucide-react";
+import { Calendar, FileText, TrendingUp, Clock, DollarSign, ArrowRight, Share2, CheckCircle, Download, Loader2 } from "lucide-react";
 import AutomacaoCard from "@/components/AutomacaoCard";
 import type { AnalysisResult, FormData } from "@/types";
 
@@ -20,7 +20,8 @@ export default function ResultadoClient() {
   const router = useRouter();
   const [result, setResult] = useState<AnalysisResult | null>(null);
   const [form,   setForm]   = useState<FormData | null>(null);
-  const [copied, setCopied] = useState(false);
+  const [copied,      setCopied]      = useState(false);
+  const [downloading, setDownloading] = useState(false);
 
   useEffect(() => {
     const rawResult = sessionStorage.getItem("diagnostico_result");
@@ -42,6 +43,31 @@ export default function ResultadoClient() {
     );
   }
 
+  const handleDownloadPDF = async () => {
+    if (!form || !result) return;
+    setDownloading(true);
+    try {
+      const res = await fetch("/api/generate-pdf", {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify({ form, result }),
+      });
+      if (!res.ok) throw new Error("Falha ao gerar PDF");
+      const blob = await res.blob();
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement("a");
+      a.href     = url;
+      a.download = `Diagnostico-IA-${form.empresa.replace(/[^a-zA-Z0-9]/g, "-")}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error(err);
+      alert("Erro ao gerar o PDF. Tente novamente.");
+    } finally {
+      setDownloading(false);
+    }
+  };
+
   const handleShare = async () => {
     try {
       await navigator.clipboard.writeText(window.location.href);
@@ -62,13 +88,25 @@ export default function ResultadoClient() {
               Potencializa
             </span>
           </div>
-          <button
-            onClick={handleShare}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl border border-white/20 text-white/60 hover:text-white hover:border-white/40 transition-all text-sm"
-          >
-            {copied ? <CheckCircle className="w-4 h-4 text-emerald-400" /> : <Share2 className="w-4 h-4" />}
-            {copied ? "Copiado!" : "Compartilhar"}
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleDownloadPDF}
+              disabled={downloading}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#ff851b] hover:bg-[#e0700d] text-white text-sm font-semibold transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed disabled:scale-100"
+            >
+              {downloading
+                ? <><Loader2 className="w-4 h-4 animate-spin" /> Gerando...</>
+                : <><Download className="w-4 h-4" /> Baixar PDF</>
+              }
+            </button>
+            <button
+              onClick={handleShare}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl border border-white/20 text-white/60 hover:text-white hover:border-white/40 transition-all text-sm"
+            >
+              {copied ? <CheckCircle className="w-4 h-4 text-emerald-400" /> : <Share2 className="w-4 h-4" />}
+              {copied ? "Copiado!" : "Compartilhar"}
+            </button>
+          </div>
         </div>
       </header>
 
