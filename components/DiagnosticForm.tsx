@@ -230,10 +230,14 @@ export default function DiagnosticForm() {
               </Field>
 
               <Field label="Setor / Ramo de atuação" error={errors.setor?.message}>
-                <select {...register("setor")} className={inputClass(!!errors.setor)}>
-                  <option value="">Selecione o setor...</option>
+                <select
+                  {...register("setor")}
+                  className={inputClass(!!errors.setor)}
+                  style={{ backgroundColor: "#002d5c", color: "white" }}
+                >
+                  <option value="" style={{ backgroundColor: "#002d5c", color: "white" }}>Selecione o setor...</option>
                   {SETORES.map((s) => (
-                    <option key={s} value={s}>{s}</option>
+                    <option key={s} value={s} style={{ backgroundColor: "#002d5c", color: "white" }}>{s}</option>
                   ))}
                 </select>
               </Field>
@@ -294,13 +298,24 @@ export default function DiagnosticForm() {
                 />
               </Field>
 
-              <Field label="Orçamento estimado para automação" error={errors.orcamento?.message}>
-                <select {...register("orcamento")} className={inputClass(!!errors.orcamento)}>
-                  <option value="">Selecione uma faixa...</option>
+              <Field label="Orçamento estimado para automação">
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                   {ORCAMENTOS.map((o) => (
-                    <option key={o.value} value={o.value}>{o.label}</option>
+                    <label
+                      key={o.value}
+                      className="relative flex items-center gap-2 p-3 rounded-xl border border-white/10 cursor-pointer hover:border-[#ff851b]/50 transition-colors has-[:checked]:border-[#ff851b] has-[:checked]:bg-[#ff851b]/10"
+                    >
+                      <input
+                        {...register("orcamento")}
+                        type="radio"
+                        value={o.value}
+                        className="sr-only"
+                      />
+                      <span className="text-xs text-white/80 leading-tight">{o.label}</span>
+                    </label>
                   ))}
-                </select>
+                </div>
+                {errors.orcamento && <p className="text-red-400 text-xs mt-1">{errors.orcamento.message}</p>}
               </Field>
             </div>
           )}
