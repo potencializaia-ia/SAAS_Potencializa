@@ -1,20 +1,10 @@
-import path from "path";
 import {
-  Document, Page, Text, View, StyleSheet, Font,
+  Document, Page, Text, View, StyleSheet,
 } from "@react-pdf/renderer";
 import type { AnalysisResult, FormData, Automacao } from "@/types";
 
-// ─── Registro de fontes (arquivos locais — evita falhas de rede no serverless) ──
-const fontsDir = path.join(process.cwd(), "public", "fonts");
-
-Font.register({
-  family: "Raleway",
-  fonts: [
-    { src: path.join(fontsDir, "Raleway-Regular.ttf"),  fontWeight: 400 },
-    { src: path.join(fontsDir, "Raleway-SemiBold.ttf"), fontWeight: 600 },
-    { src: path.join(fontsDir, "Raleway-Bold.ttf"),     fontWeight: 700 },
-  ],
-});
+// Sem registro de fonte customizada — usa Helvetica embutida no renderer
+// (evita qualquer falha de rede ou formato inválido no serverless)
 
 // ─── Cores ────────────────────────────────────────────────────────────────────
 const C = {
@@ -35,7 +25,7 @@ const C = {
 // ─── Estilos ──────────────────────────────────────────────────────────────────
 const S = StyleSheet.create({
   page: {
-    fontFamily:      "Raleway",
+    fontFamily:      "Helvetica",
     backgroundColor: C.white,
     paddingBottom:   60,
   },
@@ -61,6 +51,7 @@ const S = StyleSheet.create({
   coverTitle: {
     fontSize:   30,
     fontWeight: 700,
+    fontFamily: "Helvetica-Bold",
     color:      C.white,
     lineHeight: 1.2,
     marginBottom: 10,
