@@ -1,15 +1,18 @@
+import path from "path";
 import {
-  Document, Page, Text, View, StyleSheet, Image, Font,
+  Document, Page, Text, View, StyleSheet, Font,
 } from "@react-pdf/renderer";
 import type { AnalysisResult, FormData, Automacao } from "@/types";
 
-// ─── Registro de fontes ───────────────────────────────────────────────────────
+// ─── Registro de fontes (arquivos locais — evita falhas de rede no serverless) ──
+const fontsDir = path.join(process.cwd(), "public", "fonts");
+
 Font.register({
   family: "Raleway",
   fonts: [
-    { src: "https://fonts.gstatic.com/s/raleway/v34/1Ptxg8zYS_SKggPN4iEgvnHyvveLxVvaorCIPrE.woff2", fontWeight: 400 },
-    { src: "https://fonts.gstatic.com/s/raleway/v34/1Ptxg8zYS_SKggPN4iEgvnHyvveLxVvaorCGPrE.woff2", fontWeight: 600 },
-    { src: "https://fonts.gstatic.com/s/raleway/v34/1Ptxg8zYS_SKggPN4iEgvnHyvveLxVvaorCFPrE.woff2", fontWeight: 700 },
+    { src: path.join(fontsDir, "Raleway-Regular.ttf"),  fontWeight: 400 },
+    { src: path.join(fontsDir, "Raleway-SemiBold.ttf"), fontWeight: 600 },
+    { src: path.join(fontsDir, "Raleway-Bold.ttf"),     fontWeight: 700 },
   ],
 });
 
