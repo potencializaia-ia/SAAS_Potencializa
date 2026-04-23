@@ -38,6 +38,19 @@ export interface AnalysisResult {
   resumoGeral:      string;
 }
 
+// Automação do catálogo real (tabela automacoes_catalogo no Supabase)
+export interface AutomacaoCatalogo {
+  id:                   number;
+  nome:                 string;
+  categoria:            string;
+  setores:              string;  // pipe-separated
+  descricao:            string;
+  complexidade:         "Fácil" | "Médio" | "Complexo";
+  horas_mes:            number;
+  roi_12meses:          number;
+  custo_implementacao:  number;
+}
+
 // Payload salvo no Supabase
 export interface LeadPayload {
   nome:       string;

@@ -38,13 +38,16 @@ const SETORES = [
   "Contabilidade / Financeiro",
   "Saúde / Clínicas",
   "Educação",
+  "Educação Online / EAD",
   "Varejo / E-commerce",
   "Imobiliária",
   "Tecnologia",
+  "SaaS / Produto Digital",
   "Logística / Transporte",
   "Construção Civil",
   "RH / Gestão de Pessoas",
   "Marketing / Agência",
+  "Serviços B2B",
   "Outro",
 ];
 
