@@ -58,16 +58,30 @@ function buildContextoEmpresa(data: FormData): string {
     (j) => j !== "Não temos nada automatizado ainda"
   );
 
+  const ferramentasCompleto = [
+    ...(data.ferramentas ?? []),
+    ...(data.outraFerramenta?.trim() ? [data.outraFerramenta.trim()] : []),
+  ].join(", ") || "Não informado";
+
+  const tarefasCompleto = [
+    ...(data.tarefasManuais ?? []),
+    ...(data.outraTarefa?.trim() ? [data.outraTarefa.trim()] : []),
+  ].join(", ") || "Não informado";
+
+  const objetivosCompleto = (data.objetivo ?? [])
+    .map((o) => objetivoLabel[o] ?? o)
+    .join(", ") || "Não informado";
+
   return `
 - **Responsável:** ${data.nome}
 - **Empresa:** ${data.empresa}
 - **Setor:** ${data.setor}
 - **Tamanho:** ${data.tamanho} funcionários
 - **Orçamento disponível:** ${orcamentoLabel[data.orcamento] ?? data.orcamento}
-- **Ferramentas que já usa:** ${(data.ferramentas ?? []).join(", ") || "Não informado"}
-- **Tarefas manuais que mais consomem tempo:** ${(data.tarefasManuais ?? []).join(", ") || "Não informado"}
+- **Ferramentas que já usa:** ${ferramentasCompleto}
+- **Tarefas manuais que mais consomem tempo:** ${tarefasCompleto}
 - **Volume mensal de operações:** ${volumeLabel[data.volumeMensal] ?? data.volumeMensal}
-- **Objetivo principal com automação:** ${objetivoLabel[data.objetivo] ?? data.objetivo}${data.contextoAdicional?.trim() ? `\n- **Contexto adicional:** "${data.contextoAdicional.trim()}"` : ""}${jaAutomFiltrados.length > 0 ? `\n\n⚠️ **JÁ AUTOMATIZADOS — NÃO RECOMENDAR ESSES:** ${jaAutomFiltrados.join(", ")}` : ""}`;
+- **Objetivos com automação:** ${objetivosCompleto}${data.contextoAdicional?.trim() ? `\n- **Contexto adicional:** "${data.contextoAdicional.trim()}"` : ""}${jaAutomFiltrados.length > 0 ? `\n\n⚠️ **JÁ AUTOMATIZADOS — NÃO RECOMENDAR ESSES:** ${jaAutomFiltrados.join(", ")}` : ""}`;
 }
 
 // ─── Formata catálogo para o prompt ──────────────────────────────────────────
@@ -104,7 +118,7 @@ ${formatarCatalogo(catalogo)}
 
 2. **Selecione as TOP 5** automações mais impactantes para esta empresa específica
    - Priorize automações que atacam as tarefas manuais: "${(data.tarefasManuais ?? []).join(", ")}"
-   - Alinhe com o objetivo: "${objetivoLabel[data.objetivo] ?? data.objetivo}"
+   - Alinhe com o objetivo: "${(data.objetivo ?? []).map((o) => objetivoLabel[o] ?? o).join(", ")}"
    - Considere o volume de ${volumeLabel[data.volumeMensal] ?? data.volumeMensal} para dimensionar o impacto
    - Use os valores reais de horas_mes e roi_12meses do catálogo
    - Personalize a descrição mencionando detalhes reais dos processos da ${data.empresa}${jaAutomFiltrados.length > 0 ? `\n   - NÃO sugira automações similares ao que já está automatizado: ${jaAutomFiltrados.join(", ")}` : ""}
@@ -127,7 +141,7 @@ ${formatarCatalogo(catalogo)}
   "totalHorasMes": 250,
   "totalEconomiaMes": 12000,
   "totalRoi12meses": 144000,
-  "resumoGeral": "2-3 frases sobre o potencial da ${data.empresa} no setor ${data.setor}, alinhado ao objetivo de ${objetivoLabel[data.objetivo] ?? data.objetivo}."
+  "resumoGeral": "2-3 frases sobre o potencial da ${data.empresa} no setor ${data.setor}, alinhado ao objetivo de ${(data.objetivo ?? []).map((o) => objetivoLabel[o] ?? o).join(", ")}."
 }
 
 ## REGRAS
@@ -156,7 +170,7 @@ ${buildContextoEmpresa(data)}
 
 2. Identifique as **top 5 oportunidades de automação com IA** mais impactantes para esta empresa.
    - Priorize automações que eliminam as tarefas manuais: "${(data.tarefasManuais ?? []).join(", ")}"
-   - Alinhe com o objetivo principal: "${objetivoLabel[data.objetivo] ?? data.objetivo}"
+   - Alinhe com o objetivo principal: "${(data.objetivo ?? []).map((o) => objetivoLabel[o] ?? o).join(", ")}"
    - Considere as ferramentas que já usa: ${(data.ferramentas ?? []).join(", ")}
    - Volume de ${volumeLabel[data.volumeMensal] ?? data.volumeMensal} — use para dimensionar o impacto
    - Seja específico ao setor ${data.setor} e ao porte da empresa (${data.tamanho} funcionários)
@@ -180,7 +194,7 @@ ${buildContextoEmpresa(data)}
   "totalHorasMes": 120,
   "totalEconomiaMes": 9000,
   "totalRoi12meses": 108000,
-  "resumoGeral": "2-3 frases específicas sobre o potencial da ${data.empresa} no setor ${data.setor}, alinhado ao objetivo de ${objetivoLabel[data.objetivo] ?? data.objetivo}."
+  "resumoGeral": "2-3 frases específicas sobre o potencial da ${data.empresa} no setor ${data.setor}, alinhado ao objetivo de ${(data.objetivo ?? []).map((o) => objetivoLabel[o] ?? o).join(", ")}."
 }
 
 ## REGRAS

@@ -41,7 +41,7 @@ export async function saveLeadToSupabase(
     setor:            form.setor,
     tamanho:          form.tamanho,
     descricao:        descricaoContexto,
-    dor:              form.contextoAdicional ?? form.objetivo ?? "",
+    dor:              form.contextoAdicional ?? (form.objetivo ?? []).join(", ") ?? "",
     orcamento:        form.orcamento,
     resultado:        result,
     total_horas_mes:  result.totalHorasMes,

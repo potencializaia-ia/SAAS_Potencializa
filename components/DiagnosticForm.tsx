@@ -18,13 +18,15 @@ const schema = z.object({
   empresa:          z.string().min(2, "Nome da empresa obrigatório"),
   setor:            z.string().min(2, "Setor obrigatório"),
   tamanho:          z.string().min(1, "Tamanho obrigatório"),
-  ferramentas:      z.array(z.string()).min(1, "Selecione pelo menos uma ferramenta"),
-  tarefasManuais:   z.array(z.string()).min(1, "Selecione pelo menos uma tarefa"),
-  jaAutomatizados:  z.array(z.string()),
-  volumeMensal:     z.string().min(1, "Selecione o volume mensal"),
-  objetivo:         z.string().min(1, "Selecione seu objetivo principal"),
+  ferramentas:       z.array(z.string()).min(1, "Selecione pelo menos uma ferramenta"),
+  outraFerramenta:   z.string().optional(),
+  tarefasManuais:    z.array(z.string()).min(1, "Selecione pelo menos uma tarefa"),
+  outraTarefa:       z.string().optional(),
+  jaAutomatizados:   z.array(z.string()),
+  volumeMensal:      z.string().min(1, "Selecione o volume mensal"),
+  objetivo:          z.array(z.string()).min(1, "Selecione pelo menos um objetivo"),
   contextoAdicional: z.string().optional(),
-  orcamento:        z.string().min(1, "Selecione uma faixa de orçamento"),
+  orcamento:         z.string().min(1, "Selecione uma faixa de orçamento"),
 });
 
 type Schema = z.infer<typeof schema>;
@@ -86,7 +88,6 @@ const TAREFAS_MANUAIS = [
   "Cobrar clientes inadimplentes",
   "Fazer onboarding de novos clientes",
   "Triagem e qualificação de leads",
-  "Outra",
 ];
 
 const JA_AUTOMATIZADOS = [
@@ -147,16 +148,18 @@ export default function DiagnosticForm() {
       ferramentas:     [],
       tarefasManuais:  [],
       jaAutomatizados: [],
+      objetivo:        [],
     },
   });
 
-  const ferramentasSelecionadas    = watch("ferramentas")     ?? [];
-  const tarefasManuaisSelecionadas = watch("tarefasManuais")  ?? [];
+  const ferramentasSelecionadas     = watch("ferramentas")     ?? [];
+  const tarefasManuaisSelecionadas  = watch("tarefasManuais")  ?? [];
   const jaAutomatizadosSelecionados = watch("jaAutomatizados") ?? [];
+  const objetivosSelecionados       = watch("objetivo")        ?? [];
 
   // Toggle genérico para checkboxes
   const toggleCheckbox = (
-    field: "ferramentas" | "tarefasManuais" | "jaAutomatizados",
+    field: "ferramentas" | "tarefasManuais" | "jaAutomatizados" | "objetivo",
     value: string,
     maxItems?: number
   ) => {
@@ -164,6 +167,7 @@ export default function DiagnosticForm() {
       ferramentas:     ferramentasSelecionadas,
       tarefasManuais:  tarefasManuaisSelecionadas,
       jaAutomatizados: jaAutomatizadosSelecionados,
+      objetivo:        objetivosSelecionados,
     };
     const current = map[field] as string[];
     if (current.includes(value)) {
@@ -179,7 +183,7 @@ export default function DiagnosticForm() {
       1: ["nome", "email", "telefone"],
       2: ["empresa", "setor", "tamanho"],
       3: ["ferramentas", "tarefasManuais"],
-      4: ["volumeMensal", "objetivo", "orcamento"],
+      4: ["volumeMensal", "objetivo", "orcamento"] as (keyof Schema)[],
     };
     const valid = await trigger(fieldsPerStep[step]);
     if (valid) setStep((s) => s + 1);
@@ -388,6 +392,12 @@ export default function DiagnosticForm() {
                 {errors.ferramentas && (
                   <p className="text-red-400 text-xs">{errors.ferramentas.message as string}</p>
                 )}
+                <input
+                  {...register("outraFerramenta")}
+                  type="text"
+                  placeholder="Outra ferramenta não listada acima... (opcional)"
+                  className={inputClass(false)}
+                />
               </div>
 
               {/* Tarefas manuais */}
@@ -434,6 +444,12 @@ export default function DiagnosticForm() {
                 {errors.tarefasManuais && (
                   <p className="text-red-400 text-xs">{errors.tarefasManuais.message as string}</p>
                 )}
+                <input
+                  {...register("outraTarefa")}
+                  type="text"
+                  placeholder="Outra tarefa que consome tempo da equipe... (opcional)"
+                  className={inputClass(false)}
+                />
               </div>
             </div>
           )}
@@ -503,23 +519,43 @@ export default function DiagnosticForm() {
                 {errors.volumeMensal && <p className="text-red-400 text-xs mt-1">{errors.volumeMensal.message}</p>}
               </div>
 
-              {/* Objetivo principal */}
+              {/* Objetivo principal — múltipla seleção */}
               <div className="space-y-2">
                 <label className="block text-sm font-medium text-white/80">
-                  Qual é o seu principal objetivo com automação?
+                  Quais são seus objetivos com automação?{" "}
+                  <span className="text-white/40 font-normal">(pode marcar mais de um)</span>
                 </label>
                 <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                  {OBJETIVOS.map((o) => (
-                    <label
-                      key={o.value}
-                      className="relative flex items-center gap-2 p-3 rounded-xl border border-white/10 cursor-pointer hover:border-[#ff851b]/50 transition-colors has-[:checked]:border-[#ff851b] has-[:checked]:bg-[#ff851b]/10"
-                    >
-                      <input {...register("objetivo")} type="radio" value={o.value} className="sr-only" />
-                      <span className="text-xs text-white/80 leading-tight">{o.label}</span>
-                    </label>
-                  ))}
+                  {OBJETIVOS.map((o) => {
+                    const selecionado = objetivosSelecionados.includes(o.value);
+                    return (
+                      <button
+                        key={o.value}
+                        type="button"
+                        onClick={() => toggleCheckbox("objetivo", o.value)}
+                        className={`flex items-center gap-3 p-3 rounded-xl border text-left transition-colors ${
+                          selecionado
+                            ? "border-[#ff851b] bg-[#ff851b]/10"
+                            : "border-white/10 hover:border-[#ff851b]/50"
+                        }`}
+                      >
+                        <div className={`w-4 h-4 rounded border flex items-center justify-center flex-shrink-0 transition-colors ${
+                          selecionado ? "bg-[#ff851b] border-[#ff851b]" : "border-white/30"
+                        }`}>
+                          {selecionado && (
+                            <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                            </svg>
+                          )}
+                        </div>
+                        <span className="text-xs text-white/80 leading-tight">{o.label}</span>
+                      </button>
+                    );
+                  })}
                 </div>
-                {errors.objetivo && <p className="text-red-400 text-xs mt-1">{errors.objetivo.message}</p>}
+                {errors.objetivo && (
+                  <p className="text-red-400 text-xs mt-1">{errors.objetivo.message as string}</p>
+                )}
               </div>
 
               {/* Contexto adicional */}
