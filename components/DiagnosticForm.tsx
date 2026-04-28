@@ -20,7 +20,7 @@ const schema = z.object({
   tamanho:          z.string().min(1, "Tamanho obrigatório"),
   ferramentas:      z.array(z.string()).min(1, "Selecione pelo menos uma ferramenta"),
   tarefasManuais:   z.array(z.string()).min(1, "Selecione pelo menos uma tarefa"),
-  jaAutomatizados:  z.array(z.string()).optional().default([]),
+  jaAutomatizados:  z.array(z.string()),
   volumeMensal:     z.string().min(1, "Selecione o volume mensal"),
   objetivo:         z.string().min(1, "Selecione seu objetivo principal"),
   contextoAdicional: z.string().optional(),
