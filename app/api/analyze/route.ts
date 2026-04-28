@@ -53,12 +53,11 @@ function formatarCatalogo(automacoes: AutomacaoCatalogo[]): string {
     .join("\n\n");
 }
 
-// ─── Prompt com catálogo real ─────────────────────────────────────────────────
-function buildPrompt(data: FormData, catalogo: AutomacaoCatalogo[]): string {
+// ─── Prompt COM catálogo (modo principal) ────────────────────────────────────
+function buildPromptComCatalogo(data: FormData, catalogo: AutomacaoCatalogo[]): string {
   return `Você é um especialista sênior em automação com IA da Potencializa, empresa brasileira.
 
 ## DADOS DA EMPRESA
-
 - **Responsável:** ${data.nome}
 - **Empresa:** ${data.empresa}
 - **Setor:** ${data.setor}
@@ -68,31 +67,26 @@ function buildPrompt(data: FormData, catalogo: AutomacaoCatalogo[]): string {
 - **Principal dor/desafio:** "${data.dor}"
 
 ## CATÁLOGO DE AUTOMAÇÕES DISPONÍVEIS (${catalogo.length} opções para este setor)
-
 Estas são automações REAIS que a Potencializa entrega. Escolha APENAS desta lista:
 
 ${formatarCatalogo(catalogo)}
 
 ## SUA TAREFA
-
 1. **Valide os dados**: Se a descrição ou dor forem incoerentes/sem sentido, retorne:
    {"erro": "dados_insuficientes", "mensagem": "explique em 1 frase o que falta"}
 
 2. **Selecione as TOP 5** automações mais impactantes para esta empresa específica
    - A automação #1 deve atacar diretamente a dor: "${data.dor}"
-   - Priorize pelo ROI e pelo alinhamento com os processos descritos
    - Use os valores reais de horas_mes e roi_12meses do catálogo
-
-3. **Personalize a descrição** de cada automação mencionando detalhes reais dos processos da ${data.empresa}
+   - Personalize a descrição mencionando detalhes reais dos processos da ${data.empresa}
 
 ## FORMATO DE RESPOSTA (somente JSON válido, sem markdown)
-
 {
   "automacoes": [
     {
-      "titulo": "Nome da automação do catálogo (pode adaptar levemente)",
-      "descricao": "Descrição PERSONALIZADA usando contexto real da empresa (2-3 frases específicas)",
-      "tipoAgente": "Tipo do agente (ex: Chatbot de atendimento, Processador de documentos)",
+      "titulo": "Nome da automação do catálogo",
+      "descricao": "Descrição PERSONALIZADA com contexto real da empresa (2-3 frases)",
+      "tipoAgente": "Tipo do agente (ex: Chatbot, Processador de documentos)",
       "horasMes": 80,
       "economiaMes": 4000,
       "roi12meses": 48000,
@@ -104,12 +98,64 @@ ${formatarCatalogo(catalogo)}
   "totalHorasMes": 250,
   "totalEconomiaMes": 12000,
   "totalRoi12meses": 144000,
-  "resumoGeral": "Parágrafo de 2-3 frases citando a ${data.empresa}, o setor ${data.setor} e os principais ganhos identificados."
+  "resumoGeral": "2-3 frases sobre o potencial da ${data.empresa} no setor ${data.setor}."
 }
 
 ## REGRAS
-1. Use SOMENTE automações do catálogo acima — não invente novas
+1. Use SOMENTE automações do catálogo acima
 2. economiaMes = horasMes × custo médio/hora do setor (R$40–R$150)
+3. roi12meses = economiaMes × 12
+4. complexidade: exatamente "Fácil", "Médio" ou "Complexo"
+5. produtosPotencializa: valores de ["Treinamento IA", "Agente IA Customizado", "Consultoria em IA", "Treinamento + Agente"]
+6. Retorne APENAS o JSON — sem texto antes ou depois`;
+}
+
+// ─── Prompt FALLBACK (sem catálogo — tabela ainda não configurada) ────────────
+function buildPromptFallback(data: FormData): string {
+  return `Você é um especialista sênior em automação com IA para empresas brasileiras da Potencializa.
+
+## DADOS DA EMPRESA
+- **Responsável:** ${data.nome}
+- **Empresa:** ${data.empresa}
+- **Setor:** ${data.setor}
+- **Tamanho:** ${data.tamanho} funcionários
+- **Orçamento disponível:** ${orcamentoLabel[data.orcamento] ?? data.orcamento}
+- **Descrição dos processos:** "${data.descricao}"
+- **Principal dor/desafio:** "${data.dor}"
+
+## SUA TAREFA
+1. **Valide os dados**: Se forem incoerentes/sem sentido, retorne:
+   {"erro": "dados_insuficientes", "mensagem": "explique em 1 frase o que falta"}
+
+2. Identifique as **top 5 oportunidades de automação com IA** mais impactantes para esta empresa.
+   - A automação #1 deve atacar diretamente a dor: "${data.dor}"
+   - Seja específico ao setor ${data.setor} e aos processos descritos
+   - Custo médio de mão de obra BR: R$40–R$150/hora conforme setor
+
+## FORMATO DE RESPOSTA (somente JSON válido, sem markdown)
+{
+  "automacoes": [
+    {
+      "titulo": "Nome curto e claro da automação (máx 8 palavras)",
+      "descricao": "Descrição concreta usando os processos reais mencionados (2-3 frases)",
+      "tipoAgente": "Tipo do agente IA",
+      "horasMes": 40,
+      "economiaMes": 3000,
+      "roi12meses": 36000,
+      "complexidade": "Médio",
+      "prioridade": 1,
+      "produtosPotencializa": ["Agente IA Customizado", "Treinamento IA"]
+    }
+  ],
+  "totalHorasMes": 120,
+  "totalEconomiaMes": 9000,
+  "totalRoi12meses": 108000,
+  "resumoGeral": "2-3 frases específicas sobre o potencial da ${data.empresa} no setor ${data.setor}."
+}
+
+## REGRAS
+1. horasMes: 10–80h por automação (conservador)
+2. economiaMes = horasMes × custo/hora do setor
 3. roi12meses = economiaMes × 12
 4. complexidade: exatamente "Fácil", "Médio" ou "Complexo"
 5. produtosPotencializa: valores de ["Treinamento IA", "Agente IA Customizado", "Consultoria em IA", "Treinamento + Agente"]
@@ -130,24 +176,28 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 2. Busca automações relevantes do catálogo
-    const catalogo = await fetchCatalogAutomations(data.setor);
-
-    // Fallback: se catálogo vazio (ex: setor "Outro"), busca genéricas "Todos"
-    const catalogoFinal = catalogo.length >= 3 ? catalogo : catalogo;
-
-    if (catalogoFinal.length === 0) {
-      return NextResponse.json(
-        { erro: "dados_insuficientes", mensagem: "Não encontramos automações mapeadas para o seu setor ainda. Entre em contato diretamente com a Potencializa." },
-        { status: 422 }
-      );
+    // 2. Tenta buscar catálogo do Supabase
+    // Se a tabela não existir ou estiver vazia → usa fallback (IA livre com validação)
+    let prompt: string;
+    try {
+      const catalogo = await fetchCatalogAutomations(data.setor);
+      if (catalogo.length >= 3) {
+        // Modo principal: IA seleciona do catálogo real
+        prompt = buildPromptComCatalogo(data, catalogo);
+      } else {
+        // Catálogo vazio ou insuficiente → fallback
+        prompt = buildPromptFallback(data);
+      }
+    } catch {
+      // Erro ao acessar Supabase → fallback
+      prompt = buildPromptFallback(data);
     }
 
-    // 3. Chama Claude com catálogo real
+    // 3. Chama Claude
     const message = await client.messages.create({
       model:      "claude-sonnet-4-5",
       max_tokens: 2048,
-      messages: [{ role: "user", content: buildPrompt(data, catalogoFinal) }],
+      messages: [{ role: "user", content: prompt }],
     });
 
     const rawText = message.content
