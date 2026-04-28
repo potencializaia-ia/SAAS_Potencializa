@@ -6,6 +6,8 @@ import type { FormData, AnalysisResult, AutomacaoCatalogo } from "@/types";
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
+// ─── Labels legíveis para os campos estruturados ──────────────────────────────
+
 const orcamentoLabel: Record<string, string> = {
   "ate-5k":     "até R$ 5.000",
   "5k-15k":     "R$ 5.000 a R$ 15.000",
@@ -15,30 +17,57 @@ const orcamentoLabel: Record<string, string> = {
   "indefinido": "ainda não definido",
 };
 
-// ─── Validação pré-IA ─────────────────────────────────────────────────────────
+const volumeLabel: Record<string, string> = {
+  "menos-50":  "menos de 50 operações/mês",
+  "50-200":    "50 a 200 operações/mês",
+  "200-500":   "200 a 500 operações/mês",
+  "500-2000":  "500 a 2.000 operações/mês",
+  "mais-2000": "mais de 2.000 operações/mês",
+};
+
+const objetivoLabel: Record<string, string> = {
+  "reduzir-custos":        "Reduzir custos operacionais",
+  "escalar-sem-contratar": "Escalar sem precisar contratar",
+  "atender-mais-rapido":   "Atender clientes mais rápido",
+  "eliminar-erros":        "Eliminar erros humanos em processos",
+  "liberar-equipe":        "Liberar equipe para tarefas estratégicas",
+};
+
+// ─── Validação pré-IA (apenas contextoAdicional, se preenchido) ───────────────
 function detectarConteudoInvalido(data: FormData): string | null {
-  const textos = [
-    { campo: "descrição dos processos", valor: data.descricao },
-    { campo: "principal dor/desafio",   valor: data.dor },
-  ];
-  for (const { campo, valor } of textos) {
-    const palavras = valor.trim().split(/\s+/);
-    if (palavras.length < 4) {
-      return `O campo "${campo}" está muito curto. Descreva com mais detalhes os processos reais da sua empresa.`;
-    }
+  if (!data.contextoAdicional || data.contextoAdicional.trim().length === 0) return null;
+
+  const valor   = data.contextoAdicional.trim();
+  const palavras = valor.split(/\s+/);
+
+  if (/(.)\1{4,}/.test(valor)) {
+    return `O campo de contexto adicional contém caracteres repetidos. Use informações reais da sua empresa.`;
+  }
+  if (palavras.length >= 3) {
     const comprimentoMedio = valor.replace(/\s+/g, "").length / palavras.length;
-    if (comprimentoMedio > 12) {
-      return `O campo "${campo}" parece conter texto inválido. Use palavras reais para descrever sua empresa.`;
-    }
-    if (/(.)\1{4,}/.test(valor)) {
-      return `O campo "${campo}" contém caracteres repetidos. Descreva com informações reais da sua empresa.`;
-    }
-    const palavrasReais = palavras.filter((p) => p.length >= 3);
-    if (palavrasReais.length / palavras.length < 0.5) {
-      return `O campo "${campo}" não contém informações suficientes. Seja mais detalhado sobre seus processos.`;
+    if (comprimentoMedio > 15) {
+      return `O campo de contexto adicional parece conter texto inválido. Use palavras reais para descrever sua empresa.`;
     }
   }
   return null;
+}
+
+// ─── Monta o bloco de contexto da empresa para o prompt ──────────────────────
+function buildContextoEmpresa(data: FormData): string {
+  const jaAutomFiltrados = (data.jaAutomatizados ?? []).filter(
+    (j) => j !== "Não temos nada automatizado ainda"
+  );
+
+  return `
+- **Responsável:** ${data.nome}
+- **Empresa:** ${data.empresa}
+- **Setor:** ${data.setor}
+- **Tamanho:** ${data.tamanho} funcionários
+- **Orçamento disponível:** ${orcamentoLabel[data.orcamento] ?? data.orcamento}
+- **Ferramentas que já usa:** ${(data.ferramentas ?? []).join(", ") || "Não informado"}
+- **Tarefas manuais que mais consomem tempo:** ${(data.tarefasManuais ?? []).join(", ") || "Não informado"}
+- **Volume mensal de operações:** ${volumeLabel[data.volumeMensal] ?? data.volumeMensal}
+- **Objetivo principal com automação:** ${objetivoLabel[data.objetivo] ?? data.objetivo}${data.contextoAdicional?.trim() ? `\n- **Contexto adicional:** "${data.contextoAdicional.trim()}"` : ""}${jaAutomFiltrados.length > 0 ? `\n\n⚠️ **JÁ AUTOMATIZADOS — NÃO RECOMENDAR ESSES:** ${jaAutomFiltrados.join(", ")}` : ""}`;
 }
 
 // ─── Formata catálogo para o prompt ──────────────────────────────────────────
@@ -53,18 +82,16 @@ function formatarCatalogo(automacoes: AutomacaoCatalogo[]): string {
     .join("\n\n");
 }
 
-// ─── Prompt COM catálogo (modo principal) ────────────────────────────────────
+// ─── Prompt COM catálogo (modo principal) ─────────────────────────────────────
 function buildPromptComCatalogo(data: FormData, catalogo: AutomacaoCatalogo[]): string {
+  const jaAutomFiltrados = (data.jaAutomatizados ?? []).filter(
+    (j) => j !== "Não temos nada automatizado ainda"
+  );
+
   return `Você é um especialista sênior em automação com IA da Potencializa, empresa brasileira.
 
 ## DADOS DA EMPRESA
-- **Responsável:** ${data.nome}
-- **Empresa:** ${data.empresa}
-- **Setor:** ${data.setor}
-- **Tamanho:** ${data.tamanho} funcionários
-- **Orçamento disponível:** ${orcamentoLabel[data.orcamento] ?? data.orcamento}
-- **Descrição dos processos:** "${data.descricao}"
-- **Principal dor/desafio:** "${data.dor}"
+${buildContextoEmpresa(data)}
 
 ## CATÁLOGO DE AUTOMAÇÕES DISPONÍVEIS (${catalogo.length} opções para este setor)
 Estas são automações REAIS que a Potencializa entrega. Escolha APENAS desta lista:
@@ -72,13 +99,15 @@ Estas são automações REAIS que a Potencializa entrega. Escolha APENAS desta l
 ${formatarCatalogo(catalogo)}
 
 ## SUA TAREFA
-1. **Valide os dados**: Se a descrição ou dor forem incoerentes/sem sentido, retorne:
+1. **Valide os dados**: Se as seleções forem incoerentes ou inconsistentes, retorne:
    {"erro": "dados_insuficientes", "mensagem": "explique em 1 frase o que falta"}
 
 2. **Selecione as TOP 5** automações mais impactantes para esta empresa específica
-   - A automação #1 deve atacar diretamente a dor: "${data.dor}"
+   - Priorize automações que atacam as tarefas manuais: "${(data.tarefasManuais ?? []).join(", ")}"
+   - Alinhe com o objetivo: "${objetivoLabel[data.objetivo] ?? data.objetivo}"
+   - Considere o volume de ${volumeLabel[data.volumeMensal] ?? data.volumeMensal} para dimensionar o impacto
    - Use os valores reais de horas_mes e roi_12meses do catálogo
-   - Personalize a descrição mencionando detalhes reais dos processos da ${data.empresa}
+   - Personalize a descrição mencionando detalhes reais dos processos da ${data.empresa}${jaAutomFiltrados.length > 0 ? `\n   - NÃO sugira automações similares ao que já está automatizado: ${jaAutomFiltrados.join(", ")}` : ""}
 
 ## FORMATO DE RESPOSTA (somente JSON válido, sem markdown)
 {
@@ -98,7 +127,7 @@ ${formatarCatalogo(catalogo)}
   "totalHorasMes": 250,
   "totalEconomiaMes": 12000,
   "totalRoi12meses": 144000,
-  "resumoGeral": "2-3 frases sobre o potencial da ${data.empresa} no setor ${data.setor}."
+  "resumoGeral": "2-3 frases sobre o potencial da ${data.empresa} no setor ${data.setor}, alinhado ao objetivo de ${objetivoLabel[data.objetivo] ?? data.objetivo}."
 }
 
 ## REGRAS
@@ -110,27 +139,28 @@ ${formatarCatalogo(catalogo)}
 6. Retorne APENAS o JSON — sem texto antes ou depois`;
 }
 
-// ─── Prompt FALLBACK (sem catálogo — tabela ainda não configurada) ────────────
+// ─── Prompt FALLBACK (sem catálogo) ──────────────────────────────────────────
 function buildPromptFallback(data: FormData): string {
+  const jaAutomFiltrados = (data.jaAutomatizados ?? []).filter(
+    (j) => j !== "Não temos nada automatizado ainda"
+  );
+
   return `Você é um especialista sênior em automação com IA para empresas brasileiras da Potencializa.
 
 ## DADOS DA EMPRESA
-- **Responsável:** ${data.nome}
-- **Empresa:** ${data.empresa}
-- **Setor:** ${data.setor}
-- **Tamanho:** ${data.tamanho} funcionários
-- **Orçamento disponível:** ${orcamentoLabel[data.orcamento] ?? data.orcamento}
-- **Descrição dos processos:** "${data.descricao}"
-- **Principal dor/desafio:** "${data.dor}"
+${buildContextoEmpresa(data)}
 
 ## SUA TAREFA
-1. **Valide os dados**: Se forem incoerentes/sem sentido, retorne:
+1. **Valide os dados**: Se as seleções forem incoerentes, retorne:
    {"erro": "dados_insuficientes", "mensagem": "explique em 1 frase o que falta"}
 
 2. Identifique as **top 5 oportunidades de automação com IA** mais impactantes para esta empresa.
-   - A automação #1 deve atacar diretamente a dor: "${data.dor}"
-   - Seja específico ao setor ${data.setor} e aos processos descritos
-   - Custo médio de mão de obra BR: R$40–R$150/hora conforme setor
+   - Priorize automações que eliminam as tarefas manuais: "${(data.tarefasManuais ?? []).join(", ")}"
+   - Alinhe com o objetivo principal: "${objetivoLabel[data.objetivo] ?? data.objetivo}"
+   - Considere as ferramentas que já usa: ${(data.ferramentas ?? []).join(", ")}
+   - Volume de ${volumeLabel[data.volumeMensal] ?? data.volumeMensal} — use para dimensionar o impacto
+   - Seja específico ao setor ${data.setor} e ao porte da empresa (${data.tamanho} funcionários)
+   - Custo médio de mão de obra BR: R$40–R$150/hora conforme setor${jaAutomFiltrados.length > 0 ? `\n   - NÃO sugira automações similares ao que já está automatizado: ${jaAutomFiltrados.join(", ")}` : ""}
 
 ## FORMATO DE RESPOSTA (somente JSON válido, sem markdown)
 {
@@ -150,7 +180,7 @@ function buildPromptFallback(data: FormData): string {
   "totalHorasMes": 120,
   "totalEconomiaMes": 9000,
   "totalRoi12meses": 108000,
-  "resumoGeral": "2-3 frases específicas sobre o potencial da ${data.empresa} no setor ${data.setor}."
+  "resumoGeral": "2-3 frases específicas sobre o potencial da ${data.empresa} no setor ${data.setor}, alinhado ao objetivo de ${objetivoLabel[data.objetivo] ?? data.objetivo}."
 }
 
 ## REGRAS
@@ -167,7 +197,7 @@ export async function POST(req: NextRequest) {
   try {
     const data: FormData = await req.json();
 
-    // 1. Validação pré-IA
+    // 1. Validação pré-IA (contextoAdicional opcional)
     const erroValidacao = detectarConteudoInvalido(data);
     if (erroValidacao) {
       return NextResponse.json(
@@ -177,19 +207,15 @@ export async function POST(req: NextRequest) {
     }
 
     // 2. Tenta buscar catálogo do Supabase
-    // Se a tabela não existir ou estiver vazia → usa fallback (IA livre com validação)
     let prompt: string;
     try {
       const catalogo = await fetchCatalogAutomations(data.setor);
       if (catalogo.length >= 3) {
-        // Modo principal: IA seleciona do catálogo real
         prompt = buildPromptComCatalogo(data, catalogo);
       } else {
-        // Catálogo vazio ou insuficiente → fallback
         prompt = buildPromptFallback(data);
       }
     } catch {
-      // Erro ao acessar Supabase → fallback
       prompt = buildPromptFallback(data);
     }
 

@@ -22,6 +22,17 @@ export async function saveLeadToSupabase(
 ): Promise<void> {
   const supabase = getClient();
 
+  // Monta um resumo textual do contexto para manter compatibilidade com colunas existentes
+  const descricaoContexto = [
+    `Ferramentas: ${(form.ferramentas ?? []).join(", ")}`,
+    `Tarefas manuais: ${(form.tarefasManuais ?? []).join(", ")}`,
+    `Volume: ${form.volumeMensal}`,
+    `Objetivo: ${form.objetivo}`,
+    (form.jaAutomatizados ?? []).length > 0
+      ? `Já automatizados: ${form.jaAutomatizados!.join(", ")}`
+      : "",
+  ].filter(Boolean).join(" | ");
+
   const { error } = await supabase.from("leads").insert({
     nome:             form.nome,
     email:            form.email,
@@ -29,8 +40,8 @@ export async function saveLeadToSupabase(
     empresa:          form.empresa,
     setor:            form.setor,
     tamanho:          form.tamanho,
-    descricao:        form.descricao,
-    dor:              form.dor,
+    descricao:        descricaoContexto,
+    dor:              form.contextoAdicional ?? form.objetivo ?? "",
     orcamento:        form.orcamento,
     resultado:        result,
     total_horas_mes:  result.totalHorasMes,

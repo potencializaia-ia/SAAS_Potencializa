@@ -1,19 +1,25 @@
 // Dados coletados no formulário
 export interface FormData {
   // Etapa 1 – Contato
-  nome:    string;
-  email:   string;
+  nome:     string;
+  email:    string;
   telefone: string;
 
   // Etapa 2 – Empresa
-  empresa:  string;
-  setor:    string;
-  tamanho:  string;
+  empresa: string;
+  setor:   string;
+  tamanho: string;
 
-  // Etapa 3 – Contexto
-  descricao:  string;
-  dor:        string;
-  orcamento:  string;
+  // Etapa 3 – Processos atuais
+  ferramentas:    string[];   // ferramentas que a empresa já usa
+  tarefasManuais: string[];   // tarefas manuais que mais consomem tempo (máx 3)
+
+  // Etapa 4 – Contexto e objetivo
+  jaAutomatizados:    string[];  // processos que já estão automatizados
+  volumeMensal:       string;    // volume de operações por mês
+  objetivo:           string;    // principal objetivo com automação
+  contextoAdicional?: string;    // campo livre opcional
+  orcamento:          string;    // faixa de orçamento disponível
 }
 
 // Uma automação sugerida pela IA
