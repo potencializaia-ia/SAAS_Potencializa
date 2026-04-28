@@ -93,9 +93,13 @@ export async function notifyNewLead(
           ${automacoesList}
         </p>
 
-        <div style="background:#fafafa;border-left:4px solid #ff851b;padding:16px;border-radius:0 8px 8px 0;margin-bottom:24px;">
-          <p style="font-size:12px;font-weight:700;color:#ff851b;margin:0 0 8px;text-transform:uppercase;">Principal Dor</p>
-          <p style="font-size:14px;color:#333;margin:0;line-height:1.6;">${form.dor}</p>
+        <div style="background:#fafafa;border-left:4px solid #ff851b;padding:16px;border-radius:0 8px 8px 0;margin-bottom:16px;">
+          <p style="font-size:12px;font-weight:700;color:#ff851b;margin:0 0 8px;text-transform:uppercase;">Objetivo Principal</p>
+          <p style="font-size:14px;color:#333;margin:0;line-height:1.6;">${form.objetivo}</p>
+        </div>
+        <div style="background:#fafafa;border-left:4px solid #7fdbff;padding:16px;border-radius:0 8px 8px 0;margin-bottom:24px;">
+          <p style="font-size:12px;font-weight:700;color:#0077b6;margin:0 0 8px;text-transform:uppercase;">Tarefas Manuais que Mais Consomem Tempo</p>
+          <p style="font-size:14px;color:#333;margin:0;line-height:1.6;">${(form.tarefasManuais ?? []).join(", ")}</p>
         </div>
 
         <div style="text-align:center;margin-top:32px;">
