@@ -1,6 +1,8 @@
 import DiagnosticForm from "@/components/DiagnosticForm";
+import CounterBadge from "@/components/CounterBadge";
 import Image from "next/image";
 import { Shield, Clock, TrendingUp } from "lucide-react";
+import { getLeadCount } from "@/lib/supabase";
 
 export const metadata = {
   title: "Diagnóstico de Automação IA | Potencializa",
@@ -8,7 +10,8 @@ export const metadata = {
     "Descubra quais processos da sua empresa podem ser automatizados com IA e quanto você pode economizar. Gratuito e instantâneo.",
 };
 
-export default function DiagnosticoPage() {
+export default async function DiagnosticoPage() {
+  const leadCount = await getLeadCount();
   return (
     <main className="min-h-screen bg-[#001f3f]">
 
@@ -44,9 +47,14 @@ export default function DiagnosticoPage() {
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-14">
             {/* Badge */}
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#ff851b]/10 border border-[#ff851b]/30 text-[#ff851b] text-sm font-medium mb-6">
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#ff851b]/10 border border-[#ff851b]/30 text-[#ff851b] text-sm font-medium mb-4">
               <span className="w-2 h-2 rounded-full bg-[#ff851b] animate-pulse" />
               Diagnóstico gratuito • Resultado em 30 segundos
+            </div>
+
+            {/* Contador de prova social */}
+            <div className="flex justify-center">
+              <CounterBadge realCount={leadCount} />
             </div>
 
             <h1

@@ -55,6 +55,21 @@ export async function saveLeadToSupabase(
   }
 }
 
+// ─── Conta total de leads gerados (para prova social na hero) ────────────────
+// Retorna 0 em caso de erro para não quebrar a página
+export async function getLeadCount(): Promise<number> {
+  try {
+    const supabase = getClient();
+    const { count, error } = await supabase
+      .from("leads")
+      .select("*", { count: "exact", head: true });
+    if (error) return 0;
+    return count ?? 0;
+  } catch {
+    return 0;
+  }
+}
+
 // ─── Busca automações do catálogo por setor (matching flexível) ───────────────
 // Ex: "Saúde / Clínicas" → busca por "Saúde" OR "Clínicas" OR "Todos"
 export async function fetchCatalogAutomations(
