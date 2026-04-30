@@ -222,8 +222,10 @@ export async function POST(req: NextRequest) {
 
     // 2. Tenta buscar catálogo do Supabase
     let prompt: string;
+    let catalogoCount = 0; // total de automações identificadas para o setor
     try {
       const catalogo = await fetchCatalogAutomations(data.setor);
+      catalogoCount  = catalogo.length;
       if (catalogo.length >= 3) {
         prompt = buildPromptComCatalogo(data, catalogo);
       } else {
@@ -267,6 +269,9 @@ export async function POST(req: NextRequest) {
     }
 
     const result = parsed as AnalysisResult;
+
+    // Anexa o total do catálogo ao resultado (salvo no JSONB do Supabase automaticamente)
+    result.totalAutomacoesCatalogo = catalogoCount;
 
     // 6. Salva lead e notifica (não bloqueia resposta)
     saveLeadToSupabase(data, result).catch(console.error);

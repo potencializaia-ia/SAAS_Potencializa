@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { Calendar, FileText, TrendingUp, Clock, DollarSign, ArrowRight, Share2, CheckCircle, Download, Loader2 } from "lucide-react";
+import { Calendar, FileText, TrendingUp, Clock, DollarSign, ArrowRight, Share2, CheckCircle, Download, Loader2, Lock, Sparkles } from "lucide-react";
 import AutomacaoCard from "@/components/AutomacaoCard";
 import type { AnalysisResult, FormData } from "@/types";
 
@@ -171,6 +171,13 @@ export default function ResultadoClient() {
             {result.automacoes.map((automacao, i) => (
               <AutomacaoCard key={i} automacao={automacao} index={i} />
             ))}
+            {/* Card bloqueado — exibe automações extras do catálogo */}
+            {(result.totalAutomacoesCatalogo ?? 0) > 5 && (
+              <LockedCard
+                extras={result.totalAutomacoesCatalogo! - 5}
+                calLink={CAL_LINK}
+              />
+            )}
           </div>
         </div>
 
@@ -249,6 +256,77 @@ export default function ResultadoClient() {
         </div>
       </footer>
     </main>
+  );
+}
+
+// ─── Locked Card (automações extras do catálogo) ──────────────────────────────
+function LockedCard({ extras, calLink }: { extras: number; calLink: string }) {
+  return (
+    <div className="relative rounded-2xl overflow-hidden border border-[#ff851b]/40 animate-[slideUp_0.4s_ease_both] bg-white/3"
+      style={{ animationDelay: "500ms" }}>
+
+      {/* Ghost cards desfocados ao fundo */}
+      <div className="blur-sm opacity-20 pointer-events-none select-none p-6 space-y-3" aria-hidden>
+        <div className="h-5 w-2/3 rounded-lg bg-white/20" />
+        <div className="h-3 w-1/3 rounded-lg bg-white/10" />
+        <div className="space-y-1.5 mt-4">
+          <div className="h-3 w-full rounded bg-white/10" />
+          <div className="h-3 w-5/6 rounded bg-white/10" />
+        </div>
+        <div className="grid grid-cols-3 gap-2 mt-4">
+          {[0, 1, 2].map((i) => (
+            <div key={i} className="h-16 rounded-xl bg-white/10" />
+          ))}
+        </div>
+      </div>
+
+      {/* Overlay com lock */}
+      <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 p-6
+                      bg-gradient-to-b from-[#001f3f]/70 via-[#001f3f]/85 to-[#001f3f]/95
+                      backdrop-blur-[2px] text-center">
+
+        {/* Ícone pulsante */}
+        <div className="relative">
+          <div className="absolute inset-0 rounded-full bg-[#ff851b]/20 animate-ping scale-150" />
+          <div className="relative w-12 h-12 rounded-full bg-[#ff851b]/15 border border-[#ff851b]/40 flex items-center justify-center">
+            <Lock className="w-5 h-5 text-[#ff851b]" />
+          </div>
+        </div>
+
+        {/* Contador */}
+        <div>
+          <div className="flex items-center justify-center gap-2 mb-1">
+            <Sparkles className="w-4 h-4 text-[#ff851b]" />
+            <span className="text-3xl font-black text-white">+{extras}</span>
+            <Sparkles className="w-4 h-4 text-[#ff851b]" />
+          </div>
+          <p className="text-white font-bold text-base leading-snug">
+            automações adicionais identificadas
+          </p>
+          <p className="text-white/50 text-xs mt-1">
+            para o seu setor e perfil de empresa
+          </p>
+        </div>
+
+        {/* CTA */}
+        <a
+          href={calLink}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-2 px-6 py-3 rounded-xl bg-[#ff851b] hover:bg-[#e0700d]
+                     text-white font-semibold text-sm transition-all duration-200
+                     hover:scale-[1.03] active:scale-[0.97] shadow-lg shadow-[#ff851b]/30"
+        >
+          <Calendar className="w-4 h-4" />
+          Desbloquear na call gratuita
+          <ArrowRight className="w-4 h-4" />
+        </a>
+
+        <p className="text-white/25 text-xs">
+          30 min com um especialista Potencializa
+        </p>
+      </div>
+    </div>
   );
 }
 

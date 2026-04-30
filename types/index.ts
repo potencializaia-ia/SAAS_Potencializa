@@ -39,11 +39,12 @@ export interface Automacao {
 
 // Resposta completa da análise
 export interface AnalysisResult {
-  automacoes:       Automacao[];
-  totalHorasMes:    number;
-  totalEconomiaMes: number;
-  totalRoi12meses:  number;
-  resumoGeral:      string;
+  automacoes:               Automacao[];
+  totalHorasMes:            number;
+  totalEconomiaMes:         number;
+  totalRoi12meses:          number;
+  resumoGeral:              string;
+  totalAutomacoesCatalogo?: number; // total de automações identificadas no catálogo para o setor
 }
 
 // Automação do catálogo real (tabela automacoes_catalogo no Supabase)
